@@ -115,10 +115,19 @@ def cmd_query(args):
 
 
 def cmd_run_all(args):
-    pipeline = ReleasePipeline()
+    demo_mode = getattr(args, "demo_mode", None)
+    pipeline = ReleasePipeline(demo_mode=demo_mode)
 
     print("=" * 60)
     print("智慧药房自动化发药系统 - 版本发布与智能回滚演示")
+    if demo_mode:
+        mode_desc = {
+            "precheck-fail": "模式: 前置校验阻断 (确定性)",
+            "precheck-pass": "模式: 前置校验通过 (后续灰度结果随机)",
+            "canary-break": "模式: 灰度熔断回滚 (确定性)",
+            "canary-success": "模式: 灰度完成发布 (确定性)"
+        }[demo_mode]
+        print(f"[{mode_desc}]")
     print("=" * 60)
     print()
 
@@ -126,84 +135,115 @@ def cmd_run_all(args):
     channel = args.channel or "regular"
     operator = "demo_user"
 
-    full_pipeline_completed = False
-    release_blocked_at_precheck = False
-    canary_triggered_rollback = False
+    phase_precheck_executed = False
+    phase_precheck_passed = False
+    phase_approval_executed = False
+    phase_approval_completed = False
+    phase_approval_interrupted = False
+    phase_canary_executed = False
+    phase_canary_rolled_back = False
+    phase_canary_completed = False
 
-    print(f"[1/5] 提交发布申请: 版本={version}, 通道={channel}")
+    final_outcome = None
+    release_id = None
+    last_result = None
+    canary_report_data = {}
+
+    print("[1/4] 提交发布申请 + 前置校验 (16项质量门禁)")
     submit_result = pipeline.submit_release(
         version=version,
         channel=channel,
         operator=operator
     )
     release_id = submit_result["release_id"]
+    phase_precheck_executed = True
+    last_result = submit_result
+
     print(f"  发布ID: {release_id}")
     print(f"  管线状态: {submit_result['pipeline_status']}")
-    print(f"  前置校验: {submit_result['precheck']['overall_status'] if submit_result.get('precheck') else 'N/A'}")
+    precheck_summary = submit_result.get("precheck", {})
+    if precheck_summary:
+        passed = precheck_summary.get("passed_checks", 0)
+        total = precheck_summary.get("total_checks", 0)
+        failed = precheck_summary.get("failed_checks", 0)
+        print(f"  前置校验: {precheck_summary.get('overall_status', 'N/A')} ({passed}/{total}通过, {failed}失败)")
     print()
 
     if submit_result["pipeline_status"] == "blocked_by_precheck":
         print("  [BLOCK] 发布被前置校验阻断，检测到以下需修复项:")
-        if submit_result.get("precheck", {}).get("repair_actions"):
-            for i, action in enumerate(submit_result["precheck"]["repair_actions"], 1):
+        repairs = precheck_summary.get("repair_actions", [])
+        if repairs:
+            for i, action in enumerate(repairs, 1):
                 print(f"    [{i}] {action[:80]}..." if len(action) > 80 else f"    [{i}] {action}")
         print()
-        print("  >>> 模拟: 开发团队修复问题后重新提交发布申请 <<<")
+        print("  复查命令:")
+        print(f"    python main.py status --release-id {release_id}")
+        print("    python main.py submit --version v2.x.x-fixed --channel regular")
         print()
-        submit_result = pipeline.submit_release(
-            version=version + "-fixed",
-            channel=channel,
-            operator=operator
-        )
-        release_id = submit_result["release_id"]
-        print(f"  新发布ID: {release_id}")
-        print(f"  管线状态: {submit_result['pipeline_status']}")
-        print(f"  前置校验: {submit_result['precheck']['overall_status'] if submit_result.get('precheck') else 'N/A'}")
 
-        if submit_result["pipeline_status"] == "blocked_by_precheck":
-            print()
-            print("  [BLOCK] 修复后仍未通过前置校验，发布流程终止于【阻断状态】。")
-            print("  (完整发布流程: 前置校验→审批→灰度发布 均未执行)")
-            approval = None
-            release_blocked_at_precheck = True
-            approve_result = submit_result
-        else:
-            print()
-            approval = submit_result.get("approval", {})
-    else:
-        approval = submit_result.get("approval", {})
+        print("=" * 60)
+        print("【演示结果汇总】")
+        print(f"  发布ID: {release_id}")
+        print("  结局: 前置校验阻断")
+        print("  阻断原因: 核心质量指标未通过门禁")
+        print("  系统行为: 正确阻断不合格版本进入生产环境")
+        print("=" * 60)
+        return
 
-    print(f"[2/5] 三级审批流程 (严格串行: 药房→信息科→设备科)")
+    phase_precheck_passed = True
+    approval = submit_result.get("approval", {})
+
+    print("[2/4] 三级审批流程 (严格串行: 药房 -> 信息科 -> 设备科)")
+    phase_approval_executed = True
     approve_result = submit_result
-    if approval is not None:
-        nodes = approval.get("nodes", []) if isinstance(approval, dict) else []
-        for idx, node in enumerate(nodes):
-            approver = node.get("approvers", ["demo_approver"])[0]
-            node_id = node.get("node_id")
-            dept = node.get("department", "")
-            dept_name = {
-                "pharmacy": "药房",
-                "it_department": "信息科",
-                "equipment_department": "设备科"
-            }.get(dept, dept)
+    nodes = approval.get("nodes", []) if isinstance(approval, dict) else []
+    approval_broke = False
+    for idx, node in enumerate(nodes):
+        approver = node.get("approvers", ["demo_approver"])[0]
+        node_id = node.get("node_id")
+        dept = node.get("department", "")
+        dept_name = {
+            "pharmacy": "药房",
+            "it_department": "信息科",
+            "equipment_department": "设备科"
+        }.get(dept, dept)
 
-            print(f"  [{idx + 1}/3] {dept_name} 审批中... (审批人: {approver})")
-            approve_result = pipeline.approve_release(
-                release_id=release_id,
-                node_id=node_id,
-                approver=approver,
-                comments=f"{dept_name}评估通过"
-            )
-            status = approve_result.get("pipeline_status")
-            if status == "approval_sequence_violation":
-                print(f"    [X] 审批顺序违规，拦截成功: {approve_result.get('error')}")
-                break
-            print(f"    [OK] 通过，管线状态: {status}")
-    else:
-        print("  (因前置校验未通过，审批环节未执行)")
+        print(f"  [{idx + 1}/3] {dept_name} 审批中... (审批人: {approver})")
+        approve_result = pipeline.approve_release(
+            release_id=release_id,
+            node_id=node_id,
+            approver=approver,
+            comments=f"{dept_name}评估通过"
+        )
+        status = approve_result.get("pipeline_status")
+        if status == "approval_sequence_violation":
+            print(f"    [VIOLATION] 审批顺序违规，拦截成功: {approve_result.get('error')}")
+            approval_broke = True
+            break
+        print(f"    [PASS] 通过，管线状态: {status}")
+        last_result = approve_result
+
+    if approval_broke:
+        phase_approval_interrupted = True
+        final_outcome = "approval_interrupted"
+        print()
+        print("=" * 60)
+        print("【演示结果汇总】")
+        print(f"  发布ID: {release_id}")
+        print("  结局: 审批中断 (审批顺序违规被系统拦截)")
+        print("  系统行为: 正确执行串行审批保护机制")
+        print()
+        print("  实际执行的环节:")
+        print("   [PRECHECK] 发布前置校验 (已通过)")
+        print("   [APPROVAL] 三级串行审批 (被顺序校验拦截)")
+        print("=" * 60)
+        return
+
+    phase_approval_completed = True
     print()
 
-    print(f"[3/5] 灰度发布与自动熔断监控 (三阶段放量+阈值监控)")
+    print("[3/4] 灰度发布与自动熔断监控 (三阶段放量 + 阈值监控)")
+    phase_canary_executed = True
     final_status = approve_result.get("pipeline_status", "unknown")
     canary = approve_result.get("canary")
     if canary:
@@ -217,85 +257,56 @@ def cmd_run_all(args):
         report = canary.get("safety_impact_report") or {}
         affected = report.get("affected_pharmacies", [])
         risk = report.get("patient_safety_assessment", {}).get("risk_level", "UNKNOWN")
-        print(f"  🚨 受影响药房(保留快照): {', '.join(affected) if affected else '无'}")
-        print(f"  🔴 风险等级: {risk}")
+        print(f"  受影响药房(保留快照): {', '.join(affected) if affected else '无'}")
+        print(f"  风险等级: {risk}")
+        canary_report_data = {
+            "affected": affected,
+            "risk_level": risk,
+            "report": report
+        }
 
         if final_status in ["rolled_back", "manually_rolled_back"]:
-            canary_triggered_rollback = True
+            phase_canary_rolled_back = True
+            final_outcome = "canary_rollback"
             print()
-            print("  [OK] 熔断机制正常工作：检测指标超限→自动暂停→版本回滚→生成安全报告→通知干系人")
-            full_pipeline_completed = True
+            print("  [CIRCUIT_BREAK] 熔断机制正常工作：检测指标超限 -> 自动暂停 -> 版本回滚 -> 生成安全报告 -> 通知干系人")
         elif final_status == "completed":
-            full_pipeline_completed = True
+            phase_canary_completed = True
+            final_outcome = "canary_completed"
             print()
-            print("  [OK] 三阶段灰度发布全部成功，无熔断触发")
+            print("  [SUCCESS] 三阶段灰度发布全部成功，无熔断触发")
     else:
-        if release_blocked_at_precheck:
-            print("  (因前置校验阻断，灰度发布环节未执行)")
-        else:
-            print(f"  灰度未启动，当前状态: {final_status}")
-    print()
-
-    print(f"[4/5] 执行回滚演练 (独立平台功能：熔断有效性常态化验证)")
-    drill_result = pipeline.execute_rollback_drill(
-        drill_name=f"定期回滚演练-{datetime.now().strftime('%Y-%m-%d')}",
-        operator=operator
-    )
-    print(f"  演练ID: {drill_result['drill_id']}")
-    print(f"  演练状态: {'[OK] 成功' if drill_result['status'] == 'success' else '[X] 失败'}")
-    print(f"  回滚成功: {drill_result['rollback_success']}")
-    print(f"  总耗时: {drill_result['duration_seconds']}秒")
-    steps = drill_result.get("details", {})
-    if isinstance(steps, dict):
-        for step_name, step_info in steps.items():
-            if isinstance(step_info, dict):
-                icon = "[OK]" if step_info.get("success") else "[X]"
-                desc = step_info.get("description", step_name)
-                dur = step_info.get("duration_ms", 0)
-                print(f"    {icon} {desc} ({dur}ms)")
-    print()
-
-    print(f"[5/5] 生成运营周报 (独立平台功能：自动化复盘与合规审计)")
-    report_result = pipeline.generate_weekly_report()
-    rd = report_result["report_data"]
-    print(f"  统计周期: {rd['week_start']} ~ {rd['week_end']}")
-    print(f"  发布总次数: {rd['total_releases']}")
-    print(f"  发布成功次数: {rd['successful_releases']}")
-    print(f"  回滚次数: {rd['rollback_count']}")
-    print(f"  发布成功率: {rd['release_success_rate']}%")
-    print(f"  平均审批时长: {rd['avg_approval_hours']}小时")
-    generated_files = [f for f in report_result["files"].values() if f]
-    print(f"  已生成文件: {len(generated_files)} 个")
-    for f in generated_files:
-        print(f"    - {f}")
+        print(f"  灰度未启动，当前状态: {final_status}")
     print()
 
     print("=" * 60)
     print("【演示结果汇总】")
     print(f"  发布ID: {release_id}")
-    if release_blocked_at_precheck:
-        print("  🚫 完整发布流程状态: 【终止于前置校验阻断】(未进入审批/灰度)")
-        print("       → 阻断原因: 开发修复后核心质量指标仍不达标")
-        print("       → 系统行为: 正确阻断不合格版本进入生产环境 ✓")
-    elif full_pipeline_completed:
-        if canary_triggered_rollback:
-            print("  [WARN] 完整发布流程状态: 【全流程走通】(前置校验→审批→灰度→熔断→自动回滚)")
-            print("       → 熔断保护: 正确触发并自动回滚 ✓")
-            print("       → 安全报告: 已保留受影响药房与风险等级 ✓")
-        else:
-            print("  [OK] 完整发布流程状态: 【全部成功】(前置校验→审批→灰度三阶段→发布完成)")
-    else:
-        print(f"  [PENDING] 完整发布流程状态: 【进行中】当前状态={final_status}")
+
+    if final_outcome == "canary_rollback":
+        print("  结局: 灰度熔断回滚 (全流程走通，熔断保护生效)")
+        print("  熔断保护: 正确触发并自动回滚")
+        print("  安全报告: 已保留受影响药房与风险等级")
+        print(f"  受影响药房: {', '.join(canary_report_data.get('affected', []))}")
+        print(f"  风险等级: {canary_report_data.get('risk_level', 'UNKNOWN')}")
+    elif final_outcome == "canary_completed":
+        print("  结局: 灰度完成发布 (全流程全部成功)")
+        print("  系统行为: 三阶段放量完成，正式发布到所有目标药房")
     print()
-    print("  本次演示已验证的能力:")
-    print("   [✓] 发布前置校验 + 阻断机制 + 修复建议")
-    print("   [✓] 三级串行审批 (药房→信息科→设备科顺序限制)")
-    print("   [✓] 三阶段药房灰度发布 + 指标监控 + 自动熔断回滚")
-    print("   [✓] 患者用药安全影响报告（含受影响药房、风险等级）")
-    print("   [✓] 常态化回滚演练（分步计时+结果归档）")
-    print("   [✓] 自动化运营周报生成 (PDF+Excel+图表)")
+    print("  实际执行的环节:")
+    if phase_precheck_executed and phase_precheck_passed:
+        print("   [PRECHECK] 发布前置校验 (已通过)")
+    if phase_approval_executed and phase_approval_completed:
+        print("   [APPROVAL] 三级串行审批 (已全部通过)")
+    if phase_canary_executed:
+        if phase_canary_rolled_back:
+            print("   [CANARY] 三阶段药房灰度发布 + 指标监控 + 自动熔断回滚")
+            print("   [SAFETY_REPORT] 患者用药安全影响报告（含受影响药房、风险等级）")
+        elif phase_canary_completed:
+            print("   [CANARY] 三阶段药房灰度发布 + 指标监控（全量发布成功）")
     print()
-    print(f"  复查命令: python main.py status --release-id {release_id}")
+    print("  复查命令:")
+    print(f"    python main.py status --release-id {release_id}")
     print("=" * 60)
 
 
@@ -331,6 +342,10 @@ def main():
 
   # 一键运行完整演示
   python main.py run-all
+  python main.py run-all --demo-mode precheck-fail
+  python main.py run-all --demo-mode precheck-pass
+  python main.py run-all --demo-mode canary-break
+  python main.py run-all --demo-mode canary-success
         """
     )
     subparsers = parser.add_subparsers(dest="command", help="可用命令")
@@ -382,6 +397,9 @@ def main():
     runall_parser = subparsers.add_parser("run-all", help="一键运行完整发布与回滚演示")
     runall_parser.add_argument("--version", help="版本号 (默认自动生成)")
     runall_parser.add_argument("--channel", choices=["regular", "hotfix"], help="发布通道")
+    runall_parser.add_argument("--demo-mode", 
+        choices=["precheck-fail", "precheck-pass", "canary-break", "canary-success"],
+        help="指定演示模式，控制各环节的确定性结果：precheck-fail(前置校验必败) / precheck-pass(前置校验必过) / canary-break(灰度必熔断) / canary-success(灰度必成功)")
 
     args = parser.parse_args()
 

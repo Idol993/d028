@@ -18,7 +18,7 @@ from .device_health_checker import DeviceHealthChecker
 
 
 class PreCheckOrchestrator:
-    def __init__(self):
+    def __init__(self, demo_force_result: Optional[str] = None):
         self.config = ConfigLoader()
         self.logger = AuditLogger()
         self._checkers: Dict[str, BasePreCheck] = {
@@ -27,6 +27,7 @@ class PreCheckOrchestrator:
             "barcode_validation": BarcodeValidationChecker(),
             "device_health_check": DeviceHealthChecker()
         }
+        self.demo_force_result = demo_force_result
 
     def run_precheck(self, version: str, release_id: Optional[str] = None,
                      context: Optional[Dict[str, Any]] = None) -> PreCheckReport:
@@ -50,23 +51,55 @@ class PreCheckOrchestrator:
         blocking_strategy = self.config.get("precheck.blocking_strategy", "any_fail_blocks")
 
         all_results: List[SingleCheckResult] = []
-        for module_name in enabled_modules:
-            if module_name in self._checkers:
-                self.logger.info(f"Running precheck module: {module_name}")
-                checker = self._checkers[module_name]
-                try:
-                    results = checker.execute(release_id, context)
-                    all_results.extend(results)
-                except Exception as e:
-                    self.logger.error(f"Precheck module {module_name} failed: {e}", exc_info=True)
+
+        if self.demo_force_result == "pass":
+            for module_name in enabled_modules:
+                if module_name in self._checkers:
+                    checker = self._checkers[module_name]
                     all_results.append(SingleCheckResult(
-                        check_id=f"sys_error_{module_name}",
-                        check_name=f"模块执行异常-{module_name}",
+                        check_id=f"demo_{module_name}",
+                        check_name=checker.__class__.__name__.replace("Checker", ""),
+                        category=checker.category if hasattr(checker, 'category') else "system",
+                        status=CheckStatus.PASSED,
+                        message="演示模式：强制通过",
+                        repair_suggestion=""
+                    ))
+        elif self.demo_force_result == "fail":
+            fail_reasons = [
+                ("ai_vision_test", "AI视觉识别准确率未达99.95%基线", "请重新校准机械臂摄像头并执行AI模型准确率回归测试"),
+                ("his_interface_check", "HIS接口处方流转超时>3000ms", "请排查HIS中间件日志，检查处方队列积压情况"),
+                ("barcode_validation", "药盒追溯码采集成功率低于99.9%", "请检查条码扫描枪对焦和光源，清洁药盒标签"),
+                ("device_health_check", "机械臂运动控制器健康度<90分", "请执行机械臂零点校准，检查同步带张力和关节润滑")
+            ]
+            for module_name, msg, repair in fail_reasons:
+                if module_name in self._checkers:
+                    checker = self._checkers[module_name]
+                    all_results.append(SingleCheckResult(
+                        check_id=f"demo_fail_{module_name}",
+                        check_name=checker.__class__.__name__.replace("Checker", ""),
                         category=checker.category if hasattr(checker, 'category') else "system",
                         status=CheckStatus.FAILED,
-                        message=f"模块执行异常: {str(e)}",
-                        repair_suggestion=f"请检查{module_name}模块配置与依赖, 查看详细日志定位问题"
+                        message=msg,
+                        repair_suggestion=repair
                     ))
+        else:
+            for module_name in enabled_modules:
+                if module_name in self._checkers:
+                    self.logger.info(f"Running precheck module: {module_name}")
+                    checker = self._checkers[module_name]
+                    try:
+                        results = checker.execute(release_id, context)
+                        all_results.extend(results)
+                    except Exception as e:
+                        self.logger.error(f"Precheck module {module_name} failed: {e}", exc_info=True)
+                        all_results.append(SingleCheckResult(
+                            check_id=f"sys_error_{module_name}",
+                            check_name=f"模块执行异常-{module_name}",
+                            category=checker.category if hasattr(checker, 'category') else "system",
+                            status=CheckStatus.FAILED,
+                            message=f"模块执行异常: {str(e)}",
+                            repair_suggestion=f"请检查{module_name}模块配置与依赖, 查看详细日志定位问题"
+                        ))
 
         report.results = all_results
         report.total_checks = len(all_results)

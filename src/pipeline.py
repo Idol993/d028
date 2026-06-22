@@ -23,15 +23,29 @@ from src.audit.report_generator import ReportGenerator
 
 
 class ReleasePipeline:
-    def __init__(self):
+    def __init__(self, demo_mode: Optional[str] = None):
         self.config = ConfigLoader()
         self.logger = AuditLogger()
         self.datastore = DataStore()
         self.notification = NotificationManager()
+        self.demo_mode = demo_mode
 
-        self.precheck = PreCheckOrchestrator()
+        precheck_demo = None
+        canary_demo = None
+        if demo_mode == "precheck-pass":
+            precheck_demo = "pass"
+        elif demo_mode == "precheck-fail":
+            precheck_demo = "fail"
+        elif demo_mode == "canary-break":
+            precheck_demo = "pass"
+            canary_demo = "circuit_break"
+        elif demo_mode == "canary-success":
+            precheck_demo = "pass"
+            canary_demo = "success"
+
+        self.precheck = PreCheckOrchestrator(demo_force_result=precheck_demo)
         self.approval = ApprovalEngine()
-        self.canary = CanaryReleaseOrchestrator()
+        self.canary = CanaryReleaseOrchestrator(demo_force_result=canary_demo)
         self.drill = RollbackDrillManager()
         self.report = ReportGenerator()
 

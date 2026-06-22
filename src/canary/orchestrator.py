@@ -18,13 +18,14 @@ from .circuit_breaker import CircuitBreaker
 
 
 class CanaryReleaseOrchestrator:
-    def __init__(self):
+    def __init__(self, demo_force_result: Optional[str] = None):
         self.config = ConfigLoader()
         self.logger = AuditLogger()
         self.notification = NotificationManager()
         self.datastore = DataStore()
         self.metrics_collector = MetricsCollector()
         self.circuit_breaker = CircuitBreaker()
+        self.demo_force_result = demo_force_result
 
     def create_canary_release(self, release_id: str, version: str,
                                operator: str = "system") -> CanaryReleaseRecord:
@@ -130,14 +131,99 @@ class CanaryReleaseOrchestrator:
                 f"Monitoring check {check_idx + 1}/{simulated_checks} for phase {record.phase}"
             )
 
-            metrics_by_pharmacy = self.metrics_collector.collect_pharmacy_metrics(
-                record.current_pharmacies,
-                duration_minutes=int(interval_seconds / 60)
-            )
-            aggregate_metrics = self.metrics_collector.compute_aggregate_metrics(metrics_by_pharmacy)
-            record.indicators = aggregate_metrics
-
-            breach_result = self.circuit_breaker.check_thresholds(aggregate_metrics)
+            if self.demo_force_result == "circuit_break":
+                if record.phase == CanaryPhase.TIER1 and check_idx == 0:
+                    demo_metrics = [
+                        MonitoringIndicator(
+                            name="prescription_delay_rate",
+                            description="处方延迟率（从结算到发药完成超时）",
+                            current_value=0.12,
+                            threshold=0.02,
+                            status=CheckStatus.FAILED,
+                            unit="%"
+                        ),
+                        MonitoringIndicator(
+                            name="dispensing_error_rate",
+                            description="发药错误率（错发/漏发）",
+                            current_value=0.0015,
+                            threshold=0.001,
+                            status=CheckStatus.FAILED,
+                            unit="%"
+                        )
+                    ]
+                    record.indicators = demo_metrics
+                    breach_result = self.circuit_breaker.check_thresholds(demo_metrics)
+                    self.logger.warning(
+                        f"[DEMO] 强制熔断触发 during phase {record.phase} at check {check_idx + 1}"
+                    )
+                    record = self.circuit_breaker.trigger_circuit_break(record, breach_result, operator)
+                    break
+                else:
+                    demo_metrics = [
+                        MonitoringIndicator(
+                            name="prescription_delay_rate",
+                            description="处方延迟率",
+                            current_value=0.005,
+                            threshold=0.02,
+                            status=CheckStatus.PASSED,
+                            unit="%"
+                        ),
+                        MonitoringIndicator(
+                            name="dispensing_error_rate",
+                            description="发药错误率",
+                            current_value=0.0001,
+                            threshold=0.001,
+                            status=CheckStatus.PASSED,
+                            unit="%"
+                        ),
+                        MonitoringIndicator(
+                            name="drug_jam_rate",
+                            description="卡药率",
+                            current_value=0.001,
+                            threshold=0.005,
+                            status=CheckStatus.PASSED,
+                            unit="%"
+                        )
+                    ]
+                    record.indicators = demo_metrics
+                    breach_result = {"should_trigger": False, "all_passed": True, "breached_indicators": []}
+            elif self.demo_force_result == "success":
+                demo_metrics = [
+                    MonitoringIndicator(
+                        name="prescription_delay_rate",
+                        description="处方延迟率",
+                        current_value=0.005,
+                        threshold=0.02,
+                        status=CheckStatus.PASSED,
+                        unit="%"
+                    ),
+                    MonitoringIndicator(
+                        name="dispensing_error_rate",
+                        description="发药错误率",
+                        current_value=0.0001,
+                        threshold=0.001,
+                        status=CheckStatus.PASSED,
+                        unit="%"
+                    ),
+                    MonitoringIndicator(
+                        name="drug_jam_rate",
+                        description="卡药率",
+                        current_value=0.001,
+                        threshold=0.005,
+                        status=CheckStatus.PASSED,
+                        unit="%"
+                    )
+                ]
+                record.indicators = demo_metrics
+                breach_result = {"should_trigger": False, "all_passed": True, "breached_indicators": []}
+            else:
+                metrics_by_pharmacy = self.metrics_collector.collect_pharmacy_metrics(
+                    record.current_pharmacies,
+                    duration_minutes=int(interval_seconds / 60)
+                )
+                aggregate_metrics = self.metrics_collector.compute_aggregate_metrics(metrics_by_pharmacy)
+                record.indicators = aggregate_metrics
+                breach_result = self.circuit_breaker.check_thresholds(aggregate_metrics)
 
             if breach_result["should_trigger"]:
                 self.logger.warning(
