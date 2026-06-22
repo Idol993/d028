@@ -1,0 +1,393 @@
+{
+  "release_id": "REL-20260622122843-c83d1b",
+  "version": "ACPT-4059-16",
+  "created_at": "2026-06-22T12:28:43.834063",
+  "precheck": {
+    "release_id": "REL-20260622122843-c83d1b",
+    "version": "ACPT-4059-16",
+    "overall_status": "passed",
+    "blocking": false,
+    "total_checks": 16,
+    "passed_checks": 16,
+    "failed_checks": 0,
+    "warning_checks": 0,
+    "skipped_checks": 0,
+    "results": [
+      {
+        "check_id": "ai_vision_001",
+        "check_name": "发药准确率基线测试",
+        "category": "ai_vision_test",
+        "status": "passed",
+        "actual_value": 0.9996,
+        "threshold_value": 0.9995,
+        "message": "AI视觉识别+机械臂抓取联合测试, 样本量: 10000, 错误数: 4",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821100"
+      },
+      {
+        "check_id": "ai_vision_002",
+        "check_name": "机械臂抓取逻辑验证",
+        "category": "ai_vision_test",
+        "status": "passed",
+        "actual_value": "5/5 场景通过",
+        "threshold_value": "全部 5 场景通过",
+        "message": "执行抓取场景测试: 标准药盒正位抓取, 药盒倾斜15度抓取, 药盒位置偏移±5mm抓取, 连续高密度药盒抓取, 空仓位跳过逻辑",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821108"
+      },
+      {
+        "check_id": "ai_vision_003",
+        "check_name": "AI视觉识别性能测试",
+        "category": "ai_vision_test",
+        "status": "passed",
+        "actual_value": "96ms",
+        "threshold_value": "<=200ms",
+        "message": "测试单帧药盒识别平均响应时间",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821113"
+      },
+      {
+        "check_id": "his_001",
+        "check_name": "HIS接口连通性与响应时间",
+        "category": "his_interface_check",
+        "status": "passed",
+        "actual_value": "570ms",
+        "threshold_value": "连通且<=3000ms",
+        "message": "测试HIS RESTful接口的POST/PUT/GET基本连通性",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821227"
+      },
+      {
+        "check_id": "his_002",
+        "check_name": "处方流转规则校验",
+        "category": "his_interface_check",
+        "status": "passed",
+        "actual_value": "5/5 类型通过",
+        "threshold_value": "全部 5 处方类型通过",
+        "message": "验证多类型处方流转: 普通处方, 麻醉处方, 急诊处方, 儿科处方, 冷链处方",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821233"
+      },
+      {
+        "check_id": "his_003",
+        "check_name": "HIS数据安全检查",
+        "category": "his_interface_check",
+        "status": "passed",
+        "actual_value": "4/4 项通过",
+        "threshold_value": "全部 4 项通过",
+        "message": "验证与HIS数据交互的安全性合规性",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821237"
+      },
+      {
+        "check_id": "his_004",
+        "check_name": "药品追溯码上传验证",
+        "category": "his_interface_check",
+        "status": "passed",
+        "actual_value": "100.00% (100/100)",
+        "threshold_value": ">= 99.5%",
+        "message": "测试药品电子监管码上传至国家追溯平台的成功率与时延",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821242"
+      },
+      {
+        "check_id": "barcode_001",
+        "check_name": "条码识别响应时间",
+        "category": "barcode_validation",
+        "status": "passed",
+        "actual_value": "平均 53.9ms, 最慢 76ms",
+        "threshold_value": "<=100ms (100%样本)",
+        "message": "测试 500 个随机条码样本的识别速度",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821475"
+      },
+      {
+        "check_id": "barcode_002",
+        "check_name": "多码制解析合规性",
+        "category": "barcode_validation",
+        "status": "passed",
+        "actual_value": "5/5 码制通过",
+        "threshold_value": "全部 5 种码制解析正确",
+        "message": "验证一维码/二维码多种标准的解析正确性",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821480"
+      },
+      {
+        "check_id": "barcode_003",
+        "check_name": "高速传送带无感采集",
+        "category": "barcode_validation",
+        "status": "passed",
+        "actual_value": "采集率 100.0000%, 传送带速度 1.5m/s",
+        "threshold_value": "采集率 >= 99.99%",
+        "message": "模拟 600 盒/分钟高速场景下条码无感采集能力",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821485"
+      },
+      {
+        "check_id": "barcode_004",
+        "check_name": "条码污损容错识别",
+        "category": "barcode_validation",
+        "status": "passed",
+        "actual_value": "5/5 缺陷类型通过",
+        "threshold_value": "全部 5 种缺陷场景可正确识别",
+        "message": "测试条码在污损、模糊、倾斜等异常场景下的识别能力",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821489"
+      },
+      {
+        "check_id": "device_001",
+        "check_name": "机械臂状态检测",
+        "category": "device_health_check",
+        "status": "passed",
+        "actual_value": "健康评分 98/100",
+        "threshold_value": ">= 90/100",
+        "message": "检测机械臂: 关节温度/电流/扭矩, 夹爪压力传感器, 碰撞检测, 累计运行时长: 4251h",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821581"
+      },
+      {
+        "check_id": "device_002",
+        "check_name": "传送带传感器检测",
+        "category": "device_health_check",
+        "status": "passed",
+        "actual_value": "6/6 传感器正常",
+        "threshold_value": "全部 6 传感器正常",
+        "message": "传感器状态详情: {'红外对射传感器(计数)': '正常', '光电传感器(到位检测)': '正常', '压力传感器(承重检测)': '正常', '速度编码器(传送带速度)': '正常', '急停按钮(安全回路)': '正常', '光幕传感器(人员防闯入)': '正常'}",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821590"
+      },
+      {
+        "check_id": "device_003",
+        "check_name": "智能二级库机器人连通性",
+        "category": "device_health_check",
+        "status": "passed",
+        "actual_value": "4/4 机器人在线",
+        "threshold_value": "全部 4 机器人在线可调度",
+        "message": "检测AGV/拆零/盘点机器人在线状态、电量、调度系统连通性",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821593"
+      },
+      {
+        "check_id": "device_004",
+        "check_name": "库存数据一致性校验",
+        "category": "device_health_check",
+        "status": "passed",
+        "actual_value": "一致率 100.0000%, 差异SKU数 0/500",
+        "threshold_value": "一致率 >= 99.9%, 差异SKU <= 3",
+        "message": "比对HIS/WMS系统库存与智能二级库实际库存的一致性",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821598"
+      },
+      {
+        "check_id": "device_005",
+        "check_name": "设备固件兼容性校验",
+        "category": "device_health_check",
+        "status": "passed",
+        "actual_value": "兼容 4/4 设备",
+        "threshold_value": "全部设备固件版本满足兼容性要求",
+        "message": "当前固件版本: {'机械臂主控': 'v2.3.1', '传送带PLC': 'v1.8.5', 'AGV调度固件': 'v3.1.0', '扫描枪固件': 'v1.2.0'}, 要求版本: {'机械臂主控': '>=2.3.0', '传送带PLC': '>=1.8.0', 'AGV调度固件': '>=3.0.0', '扫描枪固件': '>=1.1.0'}",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T12:28:43.821605"
+      }
+    ],
+    "started_at": "2026-06-22T12:28:43.820972",
+    "completed_at": "2026-06-22T12:28:43.821615",
+    "repair_summary": []
+  },
+  "approval": {
+    "release_id": "REL-20260622122843-c83d1b",
+    "channel": "regular",
+    "version": "ACPT-4059-16",
+    "nodes": [
+      {
+        "node_id": "NODE-REL-20260622122843-c83d1b-0",
+        "node_name": "药房(处方流转与发药时效评估)",
+        "department": "pharmacy",
+        "approvers": [
+          "pharmacy_director",
+          "chief_pharmacist"
+        ],
+        "status": "approved",
+        "approved_by": "pharmacy_director",
+        "approved_at": "2026-06-22T12:28:43.825069",
+        "comments": "药房节点按序审批通过",
+        "timeout_hours": 48
+      },
+      {
+        "node_id": "NODE-REL-20260622122843-c83d1b-1",
+        "node_name": "信息科(HIS接口、数据安全与追溯码上传评估)",
+        "department": "it_department",
+        "approvers": [
+          "it_manager",
+          "security_officer"
+        ],
+        "status": "approved",
+        "approved_by": "it_manager",
+        "approved_at": "2026-06-22T12:28:43.827155",
+        "comments": "信息科节点按序审批通过",
+        "timeout_hours": 48
+      },
+      {
+        "node_id": "NODE-REL-20260622122843-c83d1b-2",
+        "node_name": "设备科(机械臂运动规划、硬件兼容性与维保评估)",
+        "department": "equipment_department",
+        "approvers": [
+          "equipment_manager",
+          "maintenance_engineer"
+        ],
+        "status": "approved",
+        "approved_by": "equipment_manager",
+        "approved_at": "2026-06-22T12:28:43.829292",
+        "comments": "设备科节点按序审批通过",
+        "timeout_hours": 48
+      }
+    ],
+    "current_node_index": 3,
+    "overall_status": "approved",
+    "hotfix_reason": "",
+    "deviation_report": "",
+    "allow_parallel": false,
+    "allow_post_sign": false,
+    "created_at": "2026-06-22T12:28:43.822020",
+    "completed_at": "2026-06-22T12:28:43.829515"
+  },
+  "canary": {
+    "release_id": "REL-20260622122843-c83d1b",
+    "version": "ACPT-4059-16",
+    "phase": "rolled_back",
+    "target_pharmacies": [
+      "pharmacy_inpatient_a",
+      "pharmacy_inpatient_b",
+      "pharmacy_outpatient_common",
+      "pharmacy_emergency",
+      "pharmacy_outpatient_core"
+    ],
+    "current_pharmacies": [],
+    "indicators": [
+      {
+        "name": "dispensing_error_rate",
+        "description": "发药错误率（错发/漏发）",
+        "current_value": 0.001942,
+        "threshold": 0.001,
+        "status": "failed",
+        "unit": "%"
+      },
+      {
+        "name": "drug_jam_rate",
+        "description": "卡药率（机械臂抓取失败或传送带阻塞）",
+        "current_value": 0.007774,
+        "threshold": 0.005,
+        "status": "failed",
+        "unit": "%"
+      },
+      {
+        "name": "prescription_delay_rate",
+        "description": "处方延迟率（从结算到发药完成超时）",
+        "current_value": 0.025299,
+        "threshold": 0.02,
+        "status": "failed",
+        "unit": "%"
+      }
+    ],
+    "phase_started_at": "2026-06-22T12:28:43.831031",
+    "phase_observe_minutes": 30,
+    "circuit_break_triggered": true,
+    "circuit_break_reason": "发药错误率（错发/漏发）: 0.1942% (阈值: 0.1000%); 卡药率（机械臂抓取失败或传送带阻塞）: 0.7774% (阈值: 0.5000%); 处方延迟率（从结算到发药完成超时）: 2.5299% (阈值: 2.0000%)",
+    "rollback_triggered": true,
+    "rollback_completed_at": "2026-06-22T12:28:43.832479",
+    "safety_impact_report": {
+      "report_id": "SAFETY-REL-20260622122843-c83d1b-20260622122843",
+      "generated_at": "2026-06-22T12:28:43.832690",
+      "release_id": "REL-20260622122843-c83d1b",
+      "version": "ACPT-4059-16",
+      "affected_pharmacies": [
+        "pharmacy_inpatient_a",
+        "pharmacy_inpatient_b"
+      ],
+      "affected_pharmacy_count": 2,
+      "trigger_phase": "CanaryPhase.ROLLED_BACK",
+      "circuit_break_reason": "发药错误率（错发/漏发）: 0.1942% (阈值: 0.1000%); 卡药率（机械臂抓取失败或传送带阻塞）: 0.7774% (阈值: 0.5000%); 处方延迟率（从结算到发药完成超时）: 2.5299% (阈值: 2.0000%)",
+      "breached_indicators": [
+        {
+          "name": "dispensing_error_rate",
+          "description": "发药错误率（错发/漏发）",
+          "current_value": 0.001942,
+          "threshold": 0.001,
+          "unit": "%"
+        },
+        {
+          "name": "drug_jam_rate",
+          "description": "卡药率（机械臂抓取失败或传送带阻塞）",
+          "current_value": 0.007774,
+          "threshold": 0.005,
+          "unit": "%"
+        },
+        {
+          "name": "prescription_delay_rate",
+          "description": "处方延迟率（从结算到发药完成超时）",
+          "current_value": 0.025299,
+          "threshold": 0.02,
+          "unit": "%"
+        }
+      ],
+      "rollback_status": {
+        "triggered": true,
+        "completed": true,
+        "completed_at": "2026-06-22T12:28:43.832479"
+      },
+      "patient_safety_assessment": {
+        "risk_level": "MEDIUM",
+        "impact_details": [
+          "发药错误率略超阈值(0.19% > 0.1%)，需密切关注趋势并排查AI视觉模型偏差",
+          "卡药率超标(0.78% > 0.5%)，提醒设备运维关注，暂不直接影响用药安全",
+          "处方延迟率超标(2.53% > 2%)，需关注后续趋势，暂按中等风险处置"
+        ],
+        "emergency_pharmacy_involved": false,
+        "requires_medical_notification": false
+      },
+      "patient_experience_assessment": {
+        "waiting_impact_level": "MEDIUM",
+        "estimated_additional_wait_minutes": 21,
+        "patients_affected_estimate": 165
+      },
+      "recommended_actions": [
+        "立即确认自动回滚已在以下药房成功执行: pharmacy_inpatient_a, pharmacy_inpatient_b",
+        "验证回滚版本核心业务指标恢复正常",
+        "通知相关科室暂停该版本在其他药房的发布计划",
+        "针对受影响药房(pharmacy_inpatient_a, pharmacy_inpatient_b)，核对出错处方，通知药房人工复核熔断时段内已发出的药品",
+        "联系AI视觉算法团队分析错误样本并重新训练模型",
+        "设备科检查受影响药房的机械臂夹爪与传送带状态",
+        "现场排查是否有药品卡在设备内部并清理",
+        "信息科紧急检查HIS接口与数据库查询性能",
+        "排查处方队列是否有积压并启动处方重推机制",
+        "生成详细故障根因分析报告(RCA)，24小时内组织跨科室复盘会议"
+      ],
+      "stakeholders_to_notify": [
+        "药房主任",
+        "信息科主任",
+        "设备科主任",
+        "DevOps值班人员",
+        "医务科(如涉及患者用药安全)"
+      ]
+    },
+    "created_at": "2026-06-22T12:28:43.830784"
+  },
+  "saved_at": "2026-06-22T12:28:43.834133",
+  "hash": "8e5e7426e0e2de753a28c53de5affeb8621f5985c271f72f39e59a037eef5c1d"
+}

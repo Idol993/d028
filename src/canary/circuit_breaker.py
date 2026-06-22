@@ -1,3 +1,4 @@
+import random
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -258,9 +259,11 @@ class CircuitBreaker:
         waiting_impact = "LOW"
         for ind in breach_result["breached_indicators"]:
             if ind["name"] == "prescription_delay_rate":
-                waiting_impact = "MEDIUM" if ind["current_value"] < 0.05 else "HIGH"
+                new_level = "MEDIUM" if ind["current_value"] < 0.05 else "HIGH"
+                waiting_impact = self._escalate_risk(waiting_impact, new_level)
             elif ind["name"] == "drug_jam_rate":
-                waiting_impact = max(waiting_impact, "LOW" if ind["current_value"] < 0.01 else "MEDIUM")
+                new_level = "LOW" if ind["current_value"] < 0.01 else "MEDIUM"
+                waiting_impact = self._escalate_risk(waiting_impact, new_level)
 
         return {
             "waiting_impact_level": waiting_impact,
@@ -268,30 +271,35 @@ class CircuitBreaker:
             "patients_affected_estimate": random.randint(10, 200)
         }
 
-    def _generate_recommended_actions(self, breach_result: Dict[str, Any]) -> List[str]:
+    def _generate_recommended_actions(self, breach_result: Dict[str, Any],
+                                        affected_pharmacies: List[str]) -> List[str]:
         actions = [
-            "立即确认自动回滚已成功执行完成",
+            f"立即确认自动回滚已在以下药房成功执行: {', '.join(affected_pharmacies)}",
             "验证回滚版本核心业务指标恢复正常",
             "通知相关科室暂停该版本在其他药房的发布计划"
         ]
 
         for ind in breach_result["breached_indicators"]:
             if ind["name"] == "dispensing_error_rate":
-                actions.append("核对出错处方，通知药房人工复核已发出药品")
-                actions.append("联系AI视觉算法团队分析错误样本")
+                actions.append(
+                    f"针对受影响药房({', '.join(affected_pharmacies)})，"
+                    f"核对出错处方，通知药房人工复核熔断时段内已发出的药品"
+                )
+                actions.append("联系AI视觉算法团队分析错误样本并重新训练模型")
             elif ind["name"] == "drug_jam_rate":
-                actions.append("设备科检查机械臂夹爪与传送带状态")
-                actions.append("排查是否有药品卡在设备内部")
+                actions.append("设备科检查受影响药房的机械臂夹爪与传送带状态")
+                actions.append("现场排查是否有药品卡在设备内部并清理")
             elif ind["name"] == "prescription_delay_rate":
-                actions.append("信息科检查HIS接口与数据库性能")
-                actions.append("排查处方队列是否有积压")
+                actions.append("信息科紧急检查HIS接口与数据库查询性能")
+                actions.append("排查处方队列是否有积压并启动处方重推机制")
 
-        actions.append("生成详细故障根因分析报告(RCA)，24小时内组织复盘会议")
+        actions.append("生成详细故障根因分析报告(RCA)，24小时内组织跨科室复盘会议")
 
         return actions
 
     def _notify_circuit_break(self, record: CanaryReleaseRecord,
-                              impact_report: Dict[str, Any]):
+                              impact_report: Dict[str, Any],
+                              affected_pharmacies: List[str]):
         title = f"【紧急熔断】药房发药系统自动熔断并回滚 - {record.version}"
 
         patient_risk = impact_report.get("patient_safety_assessment", {}).get("risk_level", "UNKNOWN")
@@ -301,13 +309,18 @@ class CircuitBreaker:
             )
         )
 
+        emergency_involved = impact_report.get("patient_safety_assessment", {}).get(
+            "emergency_pharmacy_involved", False
+        )
+
         content = (
             f"## 熔断触发告警\n\n"
-            f"**风险等级**: {risk_tag}\n\n"
+            f"**风险等级**: {risk_tag}\n"
+            f"**涉及急诊药房**: {'⚠️ 是' if emergency_involved else '否'}\n\n"
             f"**发布版本**: {record.version}\n"
             f"**发布ID**: {record.release_id}\n"
             f"**熔断阶段**: {record.phase}\n"
-            f"**影响药房**: {', '.join(record.current_pharmacies) if record.current_pharmacies else '无'}\n"
+            f"**受影响药房 ({len(affected_pharmacies)}家)**: {', '.join(affected_pharmacies) if affected_pharmacies else '无'}\n"
             f"**触发原因**: {record.circuit_break_reason}\n\n"
         )
 
