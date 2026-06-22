@@ -1,0 +1,100 @@
+system:
+  name: "智慧药房自动化发药系统版本发布与智能回滚平台"
+  version: "1.0.0"
+  env: "production"
+
+precheck:
+  thresholds:
+    dispensing_accuracy_rate: 0.9995
+    his_interface_timeout_ms: 3000
+    barcode_recognition_ms: 100
+    device_health_score: 90
+  modules:
+    - ai_vision_test
+    - his_interface_check
+    - barcode_validation
+    - device_health_check
+  blocking_strategy: "any_fail_blocks"
+
+approval:
+  channels:
+    regular:
+      name: "常规迭代"
+      flow: ["pharmacy", "it_department", "equipment_department"]
+      parallel: false
+    hotfix:
+      name: "紧急热修复"
+      flow: ["pharmacy", "it_department", "equipment_department"]
+      parallel: true
+      allow_post_sign: true
+      require_deviation_report: true
+  approvers:
+    pharmacy: ["pharmacy_director", "chief_pharmacist"]
+    it_department: ["it_manager", "security_officer"]
+    equipment_department: ["equipment_manager", "maintenance_engineer"]
+  timeout_hours: 48
+  reminder_interval_minutes: 30
+
+canary:
+  pharmacies:
+    tier1:
+      name: "住院部/低流量药房"
+      members: ["pharmacy_inpatient_a", "pharmacy_inpatient_b"]
+      observe_minutes: 30
+    tier2:
+      name: "门诊普通药房"
+      members: ["pharmacy_outpatient_common"]
+      observe_minutes: 60
+    tier3:
+      name: "急诊药房/核心高流量门诊药房"
+      members: ["pharmacy_emergency", "pharmacy_outpatient_core"]
+      observe_minutes: 120
+  monitoring:
+    interval_seconds: 300
+    indicators:
+      dispensing_error_rate:
+        threshold: 0.001
+        description: "发药错误率（错发/漏发）"
+      drug_jam_rate:
+        threshold: 0.005
+        description: "卡药率（机械臂抓取失败或传送带阻塞）"
+      prescription_delay_rate:
+        threshold: 0.02
+        description: "处方延迟率（从结算到发药完成超时）"
+  circuit_breaker:
+    auto_rollback: true
+    restart_monitoring: true
+    notification_channels: ["wecom", "dingtalk", "email"]
+
+audit:
+  log_retention_days: 365
+  immutable_log: true
+  report:
+    weekly_generation_day: 0
+    formats: ["pdf", "excel"]
+  rollback_drill:
+    monthly_enabled: true
+    default_day: 15
+    auto_execute: false
+
+notification:
+  wecom:
+    webhook_url: "${WECOM_WEBHOOK_URL}"
+    enabled: true
+  dingtalk:
+    webhook_url: "${DINGTALK_WEBHOOK_URL}"
+    enabled: true
+  email:
+    smtp_host: "${SMTP_HOST}"
+    smtp_port: 587
+    username: "${SMTP_USER}"
+    password: "${SMTP_PASSWORD}"
+    recipients: ["devops@hospital.com", "pharmacy@hospital.com"]
+    enabled: true
+
+storage:
+  type: "local"
+  base_path: "./data"
+  log_path: "./logs"
+  audit_log_path: "./data/audit_logs"
+  report_path: "./data/reports"

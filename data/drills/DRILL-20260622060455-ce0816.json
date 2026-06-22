@@ -1,0 +1,57 @@
+{
+  "drill_id": "DRILL-20260622060455-ce0816",
+  "drill_name": "定期回滚演练-2026-06-22",
+  "trigger_type": "manual",
+  "status": "success",
+  "start_time": "2026-06-22T06:04:55.369367",
+  "end_time": "2026-06-22T06:04:55.521218",
+  "duration_seconds": 0,
+  "affected_pharmacies": [
+    "pharmacy_inpatient_a",
+    "pharmacy_inpatient_b"
+  ],
+  "rollback_success": true,
+  "details": {
+    "step1_simulate_issue": {
+      "success": true,
+      "duration_ms": 0,
+      "simulated_metrics": {
+        "dispensing_error_rate": 0.008829368676702705,
+        "drug_jam_rate": 0.016282454346592014,
+        "prescription_delay_rate": 0.11501080470531479
+      },
+      "description": "在 2 个药房模拟业务异常指标"
+    },
+    "step2_detect_issue": {
+      "success": true,
+      "duration_ms": 0,
+      "breached_count": 3,
+      "breached_indicators": [
+        "dispensing_error_rate",
+        "prescription_delay_rate",
+        "drug_jam_rate"
+      ],
+      "description": "熔断阈值检测与异常指标识别"
+    },
+    "step3_trigger_rollback": {
+      "success": true,
+      "duration_ms": 0,
+      "rolled_back_pharmacies": 2,
+      "description": "执行版本回滚操作（模拟，不影响真实业务）"
+    },
+    "step4_verify_rollback": {
+      "success": true,
+      "duration_ms": 100,
+      "verified_pharmacies": 2,
+      "description": "验证回滚版本部署完成与核心功能可用性"
+    },
+    "step5_restart_monitoring": {
+      "success": true,
+      "duration_ms": 50,
+      "monitoring_status": "restarted",
+      "description": "重启业务监控，确认指标恢复正常区间"
+    }
+  },
+  "archived": true,
+  "saved_at": "2026-06-22T06:04:55.522722"
+}
