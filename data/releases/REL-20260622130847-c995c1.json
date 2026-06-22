@@ -1,0 +1,76 @@
+{
+  "release_id": "REL-20260622130847-c995c1",
+  "version": "v2026.06.22.1",
+  "created_at": "2026-06-22T13:08:47.159010",
+  "precheck": {
+    "release_id": "REL-20260622130847-c995c1",
+    "version": "v2026.06.22.1",
+    "overall_status": "failed",
+    "blocking": true,
+    "total_checks": 4,
+    "passed_checks": 0,
+    "failed_checks": 4,
+    "warning_checks": 0,
+    "skipped_checks": 0,
+    "results": [
+      {
+        "check_id": "demo_fail_ai_vision_test",
+        "check_name": "AIVision",
+        "category": "ai_vision_test",
+        "status": "failed",
+        "actual_value": null,
+        "threshold_value": null,
+        "message": "AI视觉识别准确率未达99.95%基线",
+        "repair_suggestion": "请重新校准机械臂摄像头并执行AI模型准确率回归测试",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T13:08:47.158722"
+      },
+      {
+        "check_id": "demo_fail_his_interface_check",
+        "check_name": "HISInterface",
+        "category": "his_interface_check",
+        "status": "failed",
+        "actual_value": null,
+        "threshold_value": null,
+        "message": "HIS接口处方流转超时>3000ms",
+        "repair_suggestion": "请排查HIS中间件日志，检查处方队列积压情况",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T13:08:47.158729"
+      },
+      {
+        "check_id": "demo_fail_barcode_validation",
+        "check_name": "BarcodeValidation",
+        "category": "barcode_validation",
+        "status": "failed",
+        "actual_value": null,
+        "threshold_value": null,
+        "message": "药盒追溯码采集成功率低于99.9%",
+        "repair_suggestion": "请检查条码扫描枪对焦和光源，清洁药盒标签",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T13:08:47.158733"
+      },
+      {
+        "check_id": "demo_fail_device_health_check",
+        "check_name": "DeviceHealth",
+        "category": "device_health_check",
+        "status": "failed",
+        "actual_value": null,
+        "threshold_value": null,
+        "message": "机械臂运动控制器健康度<90分",
+        "repair_suggestion": "请执行机械臂零点校准，检查同步带张力和关节润滑",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T13:08:47.158737"
+      }
+    ],
+    "started_at": "2026-06-22T13:08:47.158686",
+    "completed_at": "2026-06-22T13:08:47.158784",
+    "repair_summary": [
+      "请重新校准机械臂摄像头并执行AI模型准确率回归测试",
+      "请排查HIS中间件日志，检查处方队列积压情况",
+      "请检查条码扫描枪对焦和光源，清洁药盒标签",
+      "请执行机械臂零点校准，检查同步带张力和关节润滑"
+    ]
+  },
+  "saved_at": "2026-06-22T13:08:47.159100",
+  "hash": "8e766c3b94a5404a75d235aa1ee6fa5da924401d5b51137caf158e4a0ebbb6c7"
+}

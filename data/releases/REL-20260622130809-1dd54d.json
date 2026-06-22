@@ -1,0 +1,181 @@
+{
+  "release_id": "REL-20260622130809-1dd54d",
+  "version": "v2026.06.22.1",
+  "created_at": "2026-06-22T13:08:09.028839",
+  "precheck": {
+    "release_id": "REL-20260622130809-1dd54d",
+    "version": "v2026.06.22.1",
+    "overall_status": "passed",
+    "blocking": false,
+    "total_checks": 4,
+    "passed_checks": 4,
+    "failed_checks": 0,
+    "warning_checks": 0,
+    "skipped_checks": 0,
+    "results": [
+      {
+        "check_id": "demo_ai_vision_test",
+        "check_name": "AIVision",
+        "category": "ai_vision_test",
+        "status": "passed",
+        "actual_value": null,
+        "threshold_value": null,
+        "message": "演示模式：强制通过",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T13:08:09.023135"
+      },
+      {
+        "check_id": "demo_his_interface_check",
+        "check_name": "HISInterface",
+        "category": "his_interface_check",
+        "status": "passed",
+        "actual_value": null,
+        "threshold_value": null,
+        "message": "演示模式：强制通过",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T13:08:09.023142"
+      },
+      {
+        "check_id": "demo_barcode_validation",
+        "check_name": "BarcodeValidation",
+        "category": "barcode_validation",
+        "status": "passed",
+        "actual_value": null,
+        "threshold_value": null,
+        "message": "演示模式：强制通过",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T13:08:09.023146"
+      },
+      {
+        "check_id": "demo_device_health_check",
+        "check_name": "DeviceHealth",
+        "category": "device_health_check",
+        "status": "passed",
+        "actual_value": null,
+        "threshold_value": null,
+        "message": "演示模式：强制通过",
+        "repair_suggestion": "",
+        "duration_ms": 0,
+        "checked_at": "2026-06-22T13:08:09.023149"
+      }
+    ],
+    "started_at": "2026-06-22T13:08:09.023099",
+    "completed_at": "2026-06-22T13:08:09.023195",
+    "repair_summary": []
+  },
+  "approval": {
+    "release_id": "REL-20260622130809-1dd54d",
+    "channel": "regular",
+    "version": "v2026.06.22.1",
+    "nodes": [
+      {
+        "node_id": "NODE-REL-20260622130809-1dd54d-0",
+        "node_name": "药房(处方流转与发药时效评估)",
+        "department": "pharmacy",
+        "approvers": [
+          "pharmacy_director",
+          "chief_pharmacist"
+        ],
+        "status": "approved",
+        "approved_by": "pharmacy_director",
+        "approved_at": "2026-06-22T13:08:09.024316",
+        "comments": "药房评估通过",
+        "timeout_hours": 48
+      },
+      {
+        "node_id": "NODE-REL-20260622130809-1dd54d-1",
+        "node_name": "信息科(HIS接口、数据安全与追溯码上传评估)",
+        "department": "it_department",
+        "approvers": [
+          "it_manager",
+          "security_officer"
+        ],
+        "status": "approved",
+        "approved_by": "it_manager",
+        "approved_at": "2026-06-22T13:08:09.025425",
+        "comments": "信息科评估通过",
+        "timeout_hours": 48
+      },
+      {
+        "node_id": "NODE-REL-20260622130809-1dd54d-2",
+        "node_name": "设备科(机械臂运动规划、硬件兼容性与维保评估)",
+        "department": "equipment_department",
+        "approvers": [
+          "equipment_manager",
+          "maintenance_engineer"
+        ],
+        "status": "approved",
+        "approved_by": "equipment_manager",
+        "approved_at": "2026-06-22T13:08:09.026524",
+        "comments": "设备科评估通过",
+        "timeout_hours": 48
+      }
+    ],
+    "current_node_index": 3,
+    "overall_status": "approved",
+    "hotfix_reason": "",
+    "deviation_report": "",
+    "allow_parallel": false,
+    "allow_post_sign": false,
+    "created_at": "2026-06-22T13:08:09.023336",
+    "completed_at": "2026-06-22T13:08:09.026605"
+  },
+  "canary": {
+    "release_id": "REL-20260622130809-1dd54d",
+    "version": "v2026.06.22.1",
+    "phase": "completed",
+    "target_pharmacies": [
+      "pharmacy_inpatient_a",
+      "pharmacy_inpatient_b",
+      "pharmacy_outpatient_common",
+      "pharmacy_emergency",
+      "pharmacy_outpatient_core"
+    ],
+    "current_pharmacies": [
+      "pharmacy_inpatient_a",
+      "pharmacy_inpatient_b",
+      "pharmacy_outpatient_common",
+      "pharmacy_emergency",
+      "pharmacy_outpatient_core"
+    ],
+    "indicators": [
+      {
+        "name": "prescription_delay_rate",
+        "description": "处方延迟率",
+        "current_value": 0.005,
+        "threshold": 0.02,
+        "status": "passed",
+        "unit": "%"
+      },
+      {
+        "name": "dispensing_error_rate",
+        "description": "发药错误率",
+        "current_value": 0.0001,
+        "threshold": 0.001,
+        "status": "passed",
+        "unit": "%"
+      },
+      {
+        "name": "drug_jam_rate",
+        "description": "卡药率",
+        "current_value": 0.001,
+        "threshold": 0.005,
+        "status": "passed",
+        "unit": "%"
+      }
+    ],
+    "phase_started_at": "2026-06-22T13:08:09.027958",
+    "phase_observe_minutes": 120,
+    "circuit_break_triggered": false,
+    "circuit_break_reason": "",
+    "rollback_triggered": false,
+    "rollback_completed_at": null,
+    "safety_impact_report": null,
+    "created_at": "2026-06-22T13:08:09.027173"
+  },
+  "saved_at": "2026-06-22T13:08:09.028876",
+  "hash": "e78f51c532cfba27f9b40584fb0751933b4045b5a6ffa0d1aa71c95ff18c814b"
+}
