@@ -43,6 +43,8 @@ class CircuitBreaker:
     def trigger_circuit_break(self, record: CanaryReleaseRecord,
                                breach_result: Dict[str, Any],
                                operator: str = "system") -> CanaryReleaseRecord:
+        affected_pharmacies_snapshot = list(record.current_pharmacies)
+
         record.circuit_break_triggered = True
         record.circuit_break_reason = self._format_breach_reason(breach_result)
         record.phase = CanaryPhase.ROLLING_BACK
@@ -64,10 +66,12 @@ class CircuitBreaker:
         if auto_rollback:
             record = self._execute_rollback(record, operator)
 
-        impact_report = self._generate_safety_impact_report(record, breach_result)
+        impact_report = self._generate_safety_impact_report(
+            record, breach_result, affected_pharmacies_snapshot
+        )
         record.safety_impact_report = impact_report
 
-        self._notify_circuit_break(record, impact_report)
+        self._notify_circuit_break(record, impact_report, affected_pharmacies_snapshot)
 
         return record
 
@@ -125,13 +129,15 @@ class CircuitBreaker:
         return "; ".join(reasons)
 
     def _generate_safety_impact_report(self, record: CanaryReleaseRecord,
-                                        breach_result: Dict[str, Any]) -> Dict[str, Any]:
+                                        breach_result: Dict[str, Any],
+                                        affected_pharmacies: List[str]) -> Dict[str, Any]:
         report = {
             "report_id": f"SAFETY-{record.release_id}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
             "generated_at": datetime.now().isoformat(),
             "release_id": record.release_id,
             "version": record.version,
-            "affected_pharmacies": record.current_pharmacies,
+            "affected_pharmacies": affected_pharmacies,
+            "affected_pharmacy_count": len(affected_pharmacies),
             "trigger_phase": str(record.phase),
             "circuit_break_reason": record.circuit_break_reason,
             "breached_indicators": breach_result["breached_indicators"],
@@ -140,9 +146,9 @@ class CircuitBreaker:
                 "completed": record.phase == CanaryPhase.ROLLED_BACK,
                 "completed_at": record.rollback_completed_at.isoformat() if record.rollback_completed_at else None
             },
-            "patient_safety_assessment": self._assess_patient_safety_impact(breach_result),
+            "patient_safety_assessment": self._assess_patient_safety_impact(breach_result, affected_pharmacies),
             "patient_experience_assessment": self._assess_patient_experience_impact(breach_result),
-            "recommended_actions": self._generate_recommended_actions(breach_result),
+            "recommended_actions": self._generate_recommended_actions(breach_result, affected_pharmacies),
             "stakeholders_to_notify": [
                 "药房主任",
                 "信息科主任",
@@ -153,39 +159,98 @@ class CircuitBreaker:
         }
         return report
 
-    def _assess_patient_safety_impact(self, breach_result: Dict[str, Any]) -> Dict[str, Any]:
+    @staticmethod
+    def _risk_level_order(level: str) -> int:
+        return {"LOW": 0, "MEDIUM": 1, "HIGH": 2, "CRITICAL": 3}.get(level, -1)
+
+    def _escalate_risk(self, current: str, new_level: str) -> str:
+        if self._risk_level_order(new_level) > self._risk_level_order(current):
+            return new_level
+        return current
+
+    def _assess_patient_safety_impact(self, breach_result: Dict[str, Any],
+                                       affected_pharmacies: List[str]) -> Dict[str, Any]:
         risk_level = "LOW"
         impact_description = []
 
+        emergency_flag = any("emergency" in p.lower() or "急诊" in p
+                             for p in affected_pharmacies)
+
         for ind in breach_result["breached_indicators"]:
+            val = ind["current_value"]
+
             if ind["name"] == "dispensing_error_rate":
-                if ind["current_value"] >= 0.005:
-                    risk_level = "CRITICAL"
-                    impact_description.append("极高发药错误率，可能存在严重用药安全隐患")
-                elif ind["current_value"] >= 0.002:
-                    risk_level = max(risk_level, "HIGH")
-                    impact_description.append("发药错误率偏高，存在患者用错药风险")
+                if val >= 0.005:
+                    risk_level = self._escalate_risk(risk_level, "CRITICAL")
+                    impact_description.append(
+                        f"极高发药错误率({val:.2%} ≥ 0.5%)，可能存在严重用药安全隐患，"
+                        f"需立即排查错发药品并启动用药差错应急预案"
+                    )
+                elif val >= 0.002:
+                    risk_level = self._escalate_risk(risk_level, "HIGH")
+                    impact_description.append(
+                        f"发药错误率偏高({val:.2%} ≥ 0.2%)，存在患者用错药风险，"
+                        f"建议药房人工复核已发出的高风险药品"
+                    )
                 else:
-                    risk_level = max(risk_level, "MEDIUM")
-                    impact_description.append("发药错误率略超阈值，需密切关注")
+                    risk_level = self._escalate_risk(risk_level, "MEDIUM")
+                    impact_description.append(
+                        f"发药错误率略超阈值({val:.2%} > 0.1%)，需密切关注趋势并排查AI视觉模型偏差"
+                    )
+
             elif ind["name"] == "drug_jam_rate":
-                if ind["current_value"] >= 0.02:
-                    risk_level = max(risk_level, "MEDIUM")
-                    impact_description.append("高发卡药率可能导致药品损坏或错发")
+                if val >= 0.03:
+                    risk_level = self._escalate_risk(risk_level, "HIGH")
+                    impact_description.append(
+                        f"高卡药率({val:.2%} ≥ 3%)，可能导致药品损坏、药盒错放引发二次发药错误"
+                    )
+                elif val >= 0.01:
+                    risk_level = self._escalate_risk(risk_level, "MEDIUM")
+                    impact_description.append(
+                        f"卡药率偏高({val:.2%} ≥ 1%)，设备科应尽快检查机械臂夹爪与传送带"
+                    )
                 else:
-                    risk_level = max(risk_level, "LOW")
-                    impact_description.append("卡药率超标，影响发药效率")
+                    risk_level = self._escalate_risk(risk_level, "MEDIUM")
+                    impact_description.append(
+                        f"卡药率超标({val:.2%} > 0.5%)，提醒设备运维关注，暂不直接影响用药安全"
+                    )
+
             elif ind["name"] == "prescription_delay_rate":
-                if ind["current_value"] >= 0.1:
-                    risk_level = max(risk_level, "HIGH")
-                    impact_description.append("严重处方延迟可能影响急诊患者救治时效")
+                if val >= 0.15:
+                    risk_level = self._escalate_risk(risk_level, "CRITICAL")
+                    impact_description.append(
+                        f"极严重处方延迟({val:.2%} ≥ 15%)，"
+                        f"{'急诊场景下可能危及患者生命安全' if emergency_flag else '严重影响患者救治时效'}"
+                        f"，需立即启动人工发药应急预案"
+                    )
+                elif val >= 0.10:
+                    risk_level = self._escalate_risk(risk_level, "HIGH")
+                    impact_description.append(
+                        f"严重处方延迟({val:.2%} ≥ 10%)，"
+                        f"{'可能影响急诊患者抢救时效' if emergency_flag else '影响核心门诊就医体验'}"
+                        f"，信息科需紧急排查HIS接口与数据库性能"
+                    )
+                elif val >= 0.05:
+                    risk_level = self._escalate_risk(risk_level, "MEDIUM")
+                    impact_description.append(
+                        f"较严重处方延迟({val:.2%} ≥ 5%)，高流量药房可能出现排队积压"
+                    )
                 else:
-                    risk_level = max(risk_level, "LOW")
-                    impact_description.append("处方延迟影响患者就医体验")
+                    risk_level = self._escalate_risk(risk_level, "MEDIUM")
+                    impact_description.append(
+                        f"处方延迟率超标({val:.2%} > 2%)，需关注后续趋势，暂按中等风险处置"
+                    )
+
+        if emergency_flag and risk_level in ["LOW", "MEDIUM"]:
+            risk_level = self._escalate_risk(risk_level, "MEDIUM")
+            impact_description.append(
+                "⚠️ 熔断涉及急诊药房，风险等级已按涉急诊场景自动上调关注级别"
+            )
 
         return {
             "risk_level": risk_level,
             "impact_details": impact_description,
+            "emergency_pharmacy_involved": emergency_flag,
             "requires_medical_notification": risk_level in ["HIGH", "CRITICAL"]
         }
 
